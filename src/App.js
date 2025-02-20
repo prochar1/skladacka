@@ -6,8 +6,8 @@ const IMAGE_URL = config.imageUrl; // URL obrázku – nastavíte v config
 
 const containerWidth = 1024;
 const containerHeight = 807;
-const cellWidth = containerWidth / 2; // 200
-const cellHeight = containerHeight / 2; // 200
+const cellWidth = containerWidth / config.piecesRows; // 200
+const cellHeight = containerHeight / config.piecesCols; // 200
 const snapTolerance = 20; // tolerance v pixelech pro přichycování dílků
 
 // Vygeneruje 8 trojúhelníkových dílků rozdělených ze 4 buněk.
@@ -15,31 +15,40 @@ const snapTolerance = 20; // tolerance v pixelech pro přichycování dílků
 function generatePieces() {
   const pieces = [];
   let id = 0;
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 2; col++) {
+  // Výpočet posunu herní plochy (kontejner je uprostřed)
+  const offsetX = (window.innerWidth - containerWidth) / 2;
+  const offsetY = (window.innerHeight - containerHeight) / 2;
+  // Scatter zóna – od záporné hodnoty až k hodnotě, která přesahuje herní plochu
+  const scatterMinX = -offsetX;
+  const scatterMinY = -offsetY;
+  const scatterMaxX = containerWidth + offsetX - cellWidth;
+  const scatterMaxY = containerHeight + offsetY - cellHeight;
+
+  for (let row = 0; row < config.piecesRows; row++) {
+    for (let col = 0; col < config.piecesCols; col++) {
       const correctPos = { x: col * cellWidth, y: row * cellHeight };
-      // Trojúhelník A – horní/levá polovina (clip-path: zleva nahoře)
+      // Typ A
       pieces.push({
         id: id++,
         cell: { row, col },
-        type: 'A', // polygon(0 0, 100% 0, 0 100%)
+        type: 'A',
         correctPos: { ...correctPos },
         currentPos: {
-          x: Math.random() * (containerWidth - cellWidth),
-          y: Math.random() * (containerHeight - cellHeight),
+          x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+          y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
         },
         snapped: false,
         dragOffset: null,
       });
-      // Trojúhelník B – spodní/pravá polovina (doplněk)
+      // Typ B
       pieces.push({
         id: id++,
         cell: { row, col },
-        type: 'B', // polygon(100% 100%, 100% 0, 0 100%)
+        type: 'B',
         correctPos: { ...correctPos },
         currentPos: {
-          x: Math.random() * (containerWidth - cellWidth),
-          y: Math.random() * (containerHeight - cellHeight),
+          x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+          y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
         },
         snapped: false,
         dragOffset: null,
@@ -200,7 +209,8 @@ function App() {
             width: containerWidth,
             height: containerHeight,
             margin: '0 auto',
-            // border: '1px solid black',
+            background: '#dddddd',
+            boxSizing: 'border-box',
           }}
         >
           {pieces.map((piece) => (
@@ -272,7 +282,7 @@ function App() {
           ))}
           <div
             style={{
-              position: 'absolute',
+              position: 'fixed',
               top: 10,
               right: 10,
               background: '#fff',
