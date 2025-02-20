@@ -1,7 +1,7 @@
 window.config = {
   title: 'Skládačka',
-  timeout: 1120,
-  piecesCols: 3,
-  piecesRows: 3,
+  timeout: 120,
+  piecesCols: 2,
+  piecesRows: 2,
   imageUrl: './content/vlk.jpg',
 };
