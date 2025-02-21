@@ -15,13 +15,6 @@ function generatePieces() {
   const pieces = [];
   let id = 0;
   // Výpočet okrajů pro rozmístění dílků (použijeme při disassemblingu)
-  // const offsetX = (window.innerWidth - containerWidth) / 2;
-  // const offsetY = (window.innerHeight - containerHeight) / 2;
-  // const scatterMinX = -offsetX;
-  // const scatterMinY = -offsetY;
-  // const scatterMaxX = containerWidth + offsetX - cellWidth;
-  // const scatterMaxY = containerHeight + offsetY - cellHeight;
-
   for (let row = 0; row < config.piecesCols; row++) {
     for (let col = 0; col < config.piecesCols; col++) {
       const correctPos = { x: col * cellWidth, y: row * cellHeight };
@@ -396,15 +389,15 @@ function App() {
               backgroundSize: 'cover',
             }}
           />
-          <p>Gratulujeme, úspěšně jste složil obrázek!</p>
-          <button onClick={restartGame}>Opakovat hru</button>
+          <p>{config.successMessage}</p>
+          <button onClick={restartGame}>{config.repeatGameButton}</button>
         </div>
       )}
 
       {gamePhase === 'failed' && (
         <div>
-          <p>Čas vypršel! Nepodařilo se vám složit obrázek.</p>
-          <button onClick={restartGame}>Opakovat hru</button>
+          <p>{config.expireTimeoutMessage}</p>
+          <button onClick={restartGame}>{config.repeatGameButton}</button>
         </div>
       )}
     </div>
