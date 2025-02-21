@@ -157,14 +157,17 @@ function App() {
     }
     const clientX = e.clientX || e.touches[0].clientX;
     const clientY = e.clientY || e.touches[0].clientY;
+    // Vypočtěte odsazení herní plochy (kontejner je centrovaný)
+    const offsetX = (window.innerWidth - containerWidth) / 2;
+    const offsetY = (window.innerHeight - containerHeight) / 2;
     setPieces((prev) =>
       prev.map((p) =>
         p.id === id
           ? {
               ...p,
               dragOffset: {
-                x: clientX - p.currentPos.x,
-                y: clientY - p.currentPos.y,
+                x: clientX - (offsetX + p.currentPos.x),
+                y: clientY - (offsetY + p.currentPos.y),
               },
             }
           : p
@@ -176,14 +179,23 @@ function App() {
   const handleDragMove = (e, id) => {
     const clientX = e.clientX || e.touches[0].clientX;
     const clientY = e.clientY || e.touches[0].clientY;
+    const offsetX = (window.innerWidth - containerWidth) / 2;
+    const offsetY = (window.innerHeight - containerHeight) / 2;
     setPieces((prev) =>
       prev.map((p) => {
         if (p.id === id && !p.snapped && p.dragOffset) {
+          // Spočítáme novou absolutní pozici
+          let absX = clientX - p.dragOffset.x;
+          let absY = clientY - p.dragOffset.y;
+          // Ořízneme absolutní pozici, aby dílek byl úplně uvnitř okna
+          absX = Math.max(0, Math.min(absX, window.innerWidth - cellWidth));
+          absY = Math.max(0, Math.min(absY, window.innerHeight - cellHeight));
+          // Přepočítáme relativní pozici pro herní plochu
           return {
             ...p,
             currentPos: {
-              x: clientX - p.dragOffset.x,
-              y: clientY - p.dragOffset.y,
+              x: absX - offsetX,
+              y: absY - offsetY,
             },
           };
         }
@@ -215,6 +227,7 @@ function App() {
               ...p,
               dragOffset: null,
               error: true,
+              instantSnap: true,
             };
           }
         }
