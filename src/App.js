@@ -185,7 +185,7 @@ function App() {
     );
   };
 
-  // Na uvolnění dílku jej "přichytíme", pokud je v toleranci.
+  // Upravte handleDragEnd, aby při špatném umístění nastavila error flag
   const handleDragEnd = (e, id) => {
     e.preventDefault();
     setPieces((prev) =>
@@ -199,12 +199,26 @@ function App() {
               currentPos: { ...p.correctPos },
               snapped: true,
               dragOffset: null,
+              error: false,
+            };
+          } else {
+            return {
+              ...p,
+              dragOffset: null,
+              error: true, // nastavení chybového stavu
             };
           }
         }
         return { ...p, dragOffset: null };
       })
     );
+
+    // Po jedné sekundě vymažeme error flag, aby se okraj vrátil na černou
+    setTimeout(() => {
+      setPieces((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, error: false } : p))
+      );
+    }, 1000);
   };
 
   const restartGame = () => {
@@ -262,14 +276,9 @@ function App() {
             const border = config.border || 5;
             const hyp = border * (1 + Math.sqrt(2));
 
-            // console.log(hyp);
-
-            // Definice clip-path pro obě orientace:
             const clipPaths = {
-              // Původní orientace: přepona zprava doleva zezhora dolů
               A: 'polygon(0 0, 100% 0, 0 100%)',
               B: 'polygon(100% 100%, 100% 0, 0 100%)',
-              // Alternativní orientace: šikmá strana zleva doprava zezhora dolů
               C: 'polygon(0 0, 100% 0, 100% 100%)',
               D: 'polygon(0 0, 0 100%, 100% 100%)',
             };
@@ -310,7 +319,11 @@ function App() {
                     height: cellHeight,
                     left: 0,
                     top: 0,
-                    background: 'black',
+                    background: piece.snapped
+                      ? 'green'
+                      : piece.error
+                      ? 'red'
+                      : 'black', // pokud není správně umístěn a není error => černá
                     clipPath: 'inherit',
                     zIndex: -1,
                   }}
