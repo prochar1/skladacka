@@ -6,7 +6,7 @@ const IMAGE_URL = config.imageUrl; // URL obrázku – nastavíte v config
 
 const containerWidth = config.width;
 const containerHeight = config.height;
-const cellWidth = containerWidth / config.piecesRows; // 200
+const cellWidth = containerWidth / config.piecesCols; // 200
 const cellHeight = containerHeight / config.piecesCols; // 200
 const snapTolerance = 50; // tolerance v pixelech pro přichycování dílků
 
@@ -21,7 +21,7 @@ function generatePieces() {
   const scatterMaxX = containerWidth + offsetX - cellWidth;
   const scatterMaxY = containerHeight + offsetY - cellHeight;
 
-  for (let row = 0; row < config.piecesRows; row++) {
+  for (let row = 0; row < config.piecesCols; row++) {
     for (let col = 0; col < config.piecesCols; col++) {
       const correctPos = { x: col * cellWidth, y: row * cellHeight };
       // Pro každý čtverec vytvoříme jen 2 dílky – záleží na pozici buňky, jaký typ použijeme.
@@ -259,6 +259,11 @@ function App() {
             }}
           />
           {pieces.map((piece) => {
+            const border = config.border || 5;
+            const hyp = border * (1 + Math.sqrt(2));
+
+            // console.log(hyp);
+
             // Definice clip-path pro obě orientace:
             const clipPaths = {
               // Původní orientace: přepona zprava doleva zezhora dolů
@@ -269,17 +274,16 @@ function App() {
               D: 'polygon(0 0, 0 100%, 100% 100%)',
             };
 
-            // Definice transformace – lze doladit podle potřeb:
-            const transforms = {
-              A: `translate(-${config.border}px, -${config.border}px)`,
-              B: `translate(${config.border}px, ${config.border}px)`,
-              C: `translate(${config.border}px, -${config.border}px)`,
-              D: `translate(-${config.border}px, ${config.border}px)`,
+            const clipPathsBorder = {
+              A: `polygon(${border}px ${border}px, calc(100% - ${hyp}px) ${border}px, ${border}px calc(100% - ${hyp}px))`,
+              B: `polygon(calc(100% - ${border}px) calc(100% - ${border}px), ${hyp}px calc(100% - ${border}px), calc(100% - ${border}px) ${hyp}px)`,
+              C: `polygon(${hyp}px ${border}px, calc(100% - ${border}px) ${border}px, calc(100% - ${border}px) calc(100% - ${hyp}px))`,
+              D: `polygon(${border}px calc(100% - ${border}px), ${border}px ${hyp}px, calc(100% - ${hyp}px) calc(100% - ${border}px))`,
             };
 
             return (
               <div
-                className="piece"
+                className={`piece piece-type-${piece.type}`}
                 key={piece.id}
                 style={{
                   position: 'absolute',
@@ -323,10 +327,7 @@ function App() {
                     backgroundSize: `${containerWidth}px ${containerHeight}px`,
                     backgroundPosition: `-${piece.correctPos.x}px -${piece.correctPos.y}px`,
                     zIndex: 1,
-                    transform: `scale(${
-                      (containerWidth - config.border * 10) / containerWidth
-                    }) ${transforms[piece.type]}`,
-                    clipPath: clipPaths[piece.type],
+                    clipPath: clipPathsBorder[piece.type],
                   }}
                 ></div>
               </div>
@@ -337,9 +338,6 @@ function App() {
               position: 'fixed',
               top: 10,
               right: 10,
-              background: '#fff',
-              padding: '5px',
-              border: '1px solid #000',
             }}
           >
             Čas: {timer}s
