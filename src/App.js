@@ -4,21 +4,18 @@ const config = window.config;
 const TOTAL_TIME = config.timeout; // celkový časový limit
 const IMAGE_URL = config.imageUrl; // URL obrázku – nastavíte v config
 
-const containerWidth = 1024;
-const containerHeight = 807;
+const containerWidth = config.width;
+const containerHeight = config.height;
 const cellWidth = containerWidth / config.piecesRows; // 200
 const cellHeight = containerHeight / config.piecesCols; // 200
-const snapTolerance = 20; // tolerance v pixelech pro přichycování dílků
+const snapTolerance = 50; // tolerance v pixelech pro přichycování dílků
 
-// Vygeneruje 8 trojúhelníkových dílků rozdělených ze 4 buněk.
-// Každá buňka se rozdělí na 2 trojúhelníky – typ A a typ B.
+// Vygeneruje dílky s náhodnou pozicí
 function generatePieces() {
   const pieces = [];
   let id = 0;
-  // Výpočet posunu herní plochy (kontejner je uprostřed)
   const offsetX = (window.innerWidth - containerWidth) / 2;
   const offsetY = (window.innerHeight - containerHeight) / 2;
-  // Scatter zóna – od záporné hodnoty až k hodnotě, která přesahuje herní plochu
   const scatterMinX = -offsetX;
   const scatterMinY = -offsetY;
   const scatterMaxX = containerWidth + offsetX - cellWidth;
@@ -65,36 +62,24 @@ function App() {
   const timerRef = useRef(null);
   const firstMove = useRef(false);
 
-  // Zobrazíme celý obrázek po dobu 5 sekund, poté spustíme hru se zamíchanými dílky.
   useEffect(() => {
     if (gamePhase === 'showImage') {
       const timeout = setTimeout(() => {
         setPieces(generatePieces());
         setGamePhase('playing');
-      }, 2000);
+      }, 500);
       return () => clearTimeout(timeout);
     }
   }, [gamePhase]);
 
-  // Sledujeme, zda jsou všechny dílky správně přichyceny.
+  // Start timer only once after the first move has been made.
   useEffect(() => {
-    if (
-      gamePhase === 'playing' &&
-      pieces.length > 0 &&
-      pieces.every((piece) => piece.snapped)
-    ) {
-      setGamePhase('completed');
-      clearInterval(timerRef.current);
-    }
-  }, [pieces, gamePhase]);
-
-  // Spustíme odpočet časového limitu po prvním pohnutí dílkem.
-  useEffect(() => {
-    if (gamePhase === 'playing' && firstMove.current) {
+    if (gamePhase === 'playing' && firstMove.current && !timerRef.current) {
       timerRef.current = setInterval(() => {
         setTimer((prev) => {
           if (prev <= 1) {
             clearInterval(timerRef.current);
+            timerRef.current = null;
             setGamePhase('failed');
             return 0;
           }
@@ -103,23 +88,12 @@ function App() {
       }, 1000);
     }
     return () => clearInterval(timerRef.current);
-  }, [gamePhase, timer]);
+  }, [gamePhase]);
 
   // Při spuštění tažení si uložíme offset kliknutí.
   const handleDragStart = (e, id) => {
-    // e.preventDefault();
     if (!firstMove.current) {
       firstMove.current = true;
-      timerRef.current = setInterval(() => {
-        setTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current);
-            setGamePhase('failed');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
     }
     const clientX = e.clientX || e.touches[0].clientX;
     const clientY = e.clientY || e.touches[0].clientY;
@@ -140,7 +114,6 @@ function App() {
 
   // Aktualizujeme pozici dílku při tažení.
   const handleDragMove = (e, id) => {
-    // e.preventDefault();
     const clientX = e.clientX || e.touches[0].clientX;
     const clientY = e.clientY || e.touches[0].clientY;
     setPieces((prev) =>
@@ -185,11 +158,21 @@ function App() {
     setGamePhase('showImage');
     setTimer(TOTAL_TIME);
     firstMove.current = false;
+    clearInterval(timerRef.current);
+    timerRef.current = null;
     setPieces([]);
   };
 
   return (
-    <div style={{ textAlign: 'center', padding: '20px' }}>
+    <div
+      style={{
+        textAlign: 'center',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+      }}
+    >
       {gamePhase === 'showImage' && (
         <div
           style={{
@@ -209,10 +192,19 @@ function App() {
             width: containerWidth,
             height: containerHeight,
             margin: '0 auto',
-            background: '#dddddd',
             boxSizing: 'border-box',
           }}
         >
+          <div
+            style={{
+              width: containerWidth,
+              height: containerHeight,
+              margin: '0 auto',
+              backgroundImage: `url(${IMAGE_URL})`,
+              backgroundSize: 'cover',
+              opacity: 0.1,
+            }}
+          />
           {pieces.map((piece) => (
             <div
               className="piece"
@@ -223,9 +215,6 @@ function App() {
                 height: cellHeight,
                 left: piece.currentPos.x,
                 top: piece.currentPos.y,
-                // backgroundImage: `url(${IMAGE_URL})`,
-                // backgroundSize: `${containerWidth}px ${containerHeight}px`,
-                // backgroundPosition: `-${piece.correctPos.x}px -${piece.correctPos.y}px`,
                 clipPath:
                   piece.type === 'A'
                     ? 'polygon(0 0, 100% 0, 0 100%)'
@@ -266,11 +255,11 @@ function App() {
                   backgroundPosition: `-${piece.correctPos.x}px -${piece.correctPos.y}px`,
                   zIndex: 1,
                   transform: `scale(${
-                    (containerWidth - 30) / containerWidth
+                    (containerWidth - config.border * 10) / containerWidth
                   }) ${
                     piece.type === 'A'
-                      ? `translate(-3px, -3px)`
-                      : `translate(3px, 3px)`
+                      ? `translate(-${config.border}px, -${config.border}px)`
+                      : `translate(${config.border}px, ${config.border}px)`
                   }`,
                   clipPath:
                     piece.type === 'A'
