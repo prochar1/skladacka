@@ -24,32 +24,60 @@ function generatePieces() {
   for (let row = 0; row < config.piecesRows; row++) {
     for (let col = 0; col < config.piecesCols; col++) {
       const correctPos = { x: col * cellWidth, y: row * cellHeight };
-      // Typ A
-      pieces.push({
-        id: id++,
-        cell: { row, col },
-        type: 'A',
-        correctPos: { ...correctPos },
-        currentPos: {
-          x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
-          y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
-        },
-        snapped: false,
-        dragOffset: null,
-      });
-      // Typ B
-      pieces.push({
-        id: id++,
-        cell: { row, col },
-        type: 'B',
-        correctPos: { ...correctPos },
-        currentPos: {
-          x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
-          y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
-        },
-        snapped: false,
-        dragOffset: null,
-      });
+      // Pro každý čtverec vytvoříme jen 2 dílky – záleží na pozici buňky, jaký typ použijeme.
+      if ((row + col) % 2 === 0) {
+        // Původní dělení: přepona zprava doleva zezhora dolů
+        pieces.push({
+          id: id++,
+          cell: { row, col },
+          type: 'A', // trojúhelník s přeponou zprava doleva
+          correctPos: { ...correctPos },
+          currentPos: {
+            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
+          },
+          snapped: false,
+          dragOffset: null,
+        });
+        pieces.push({
+          id: id++,
+          cell: { row, col },
+          type: 'B', // doplněk k typu A
+          correctPos: { ...correctPos },
+          currentPos: {
+            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
+          },
+          snapped: false,
+          dragOffset: null,
+        });
+      } else {
+        // Alternativní dělení: šikmá strana zleva doprava zezhora dolů
+        pieces.push({
+          id: id++,
+          cell: { row, col },
+          type: 'C', // jeden trojúhelník alternativního řezu (např. horní pravý)
+          correctPos: { ...correctPos },
+          currentPos: {
+            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
+          },
+          snapped: false,
+          dragOffset: null,
+        });
+        pieces.push({
+          id: id++,
+          cell: { row, col },
+          type: 'D', // doplněk k typu C – dolní levý
+          correctPos: { ...correctPos },
+          currentPos: {
+            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
+          },
+          snapped: false,
+          dragOffset: null,
+        });
+      }
     }
   }
   return pieces;
@@ -90,10 +118,35 @@ function App() {
     return () => clearInterval(timerRef.current);
   }, [gamePhase]);
 
+  useEffect(() => {
+    if (
+      gamePhase === 'playing' &&
+      pieces.length > 0 &&
+      pieces.every((p) => p.snapped)
+    ) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+      setGamePhase('completed');
+    }
+  }, [pieces, gamePhase]);
+
   // Při spuštění tažení si uložíme offset kliknutí.
   const handleDragStart = (e, id) => {
     if (!firstMove.current) {
       firstMove.current = true;
+      if (gamePhase === 'playing' && !timerRef.current) {
+        timerRef.current = setInterval(() => {
+          setTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+              setGamePhase('failed');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
     }
     const clientX = e.clientX || e.touches[0].clientX;
     const clientY = e.clientY || e.touches[0].clientY;
@@ -205,70 +258,80 @@ function App() {
               opacity: 0.1,
             }}
           />
-          {pieces.map((piece) => (
-            <div
-              className="piece"
-              key={piece.id}
-              style={{
-                position: 'absolute',
-                width: cellWidth,
-                height: cellHeight,
-                left: piece.currentPos.x,
-                top: piece.currentPos.y,
-                clipPath:
-                  piece.type === 'A'
-                    ? 'polygon(0 0, 100% 0, 0 100%)'
-                    : 'polygon(100% 100%, 100% 0, 0 100%)',
-                touchAction: 'none',
-                cursor: 'grab',
-                zIndex: piece.snapped ? 0 : piece.dragOffset ? 100 : 1,
-              }}
-              onMouseDown={(e) => handleDragStart(e, piece.id)}
-              onTouchStart={(e) => handleDragStart(e, piece.id)}
-              onMouseMove={(e) => handleDragMove(e, piece.id)}
-              onTouchMove={(e) => handleDragMove(e, piece.id)}
-              onMouseUp={(e) => handleDragEnd(e, piece.id)}
-              onTouchEnd={(e) => handleDragEnd(e, piece.id)}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  width: cellWidth,
-                  height: cellHeight,
-                  left: 0,
-                  top: 0,
-                  background: 'black',
-                  clipPath: 'inherit',
-                  zIndex: -1,
-                }}
-              ></div>
+          {pieces.map((piece) => {
+            // Definice clip-path pro obě orientace:
+            const clipPaths = {
+              // Původní orientace: přepona zprava doleva zezhora dolů
+              A: 'polygon(0 0, 100% 0, 0 100%)',
+              B: 'polygon(100% 100%, 100% 0, 0 100%)',
+              // Alternativní orientace: šikmá strana zleva doprava zezhora dolů
+              C: 'polygon(0 0, 100% 0, 100% 100%)',
+              D: 'polygon(0 0, 0 100%, 100% 100%)',
+            };
 
+            // Definice transformace – lze doladit podle potřeb:
+            const transforms = {
+              A: `translate(-${config.border}px, -${config.border}px)`,
+              B: `translate(${config.border}px, ${config.border}px)`,
+              C: `translate(${config.border}px, -${config.border}px)`,
+              D: `translate(-${config.border}px, ${config.border}px)`,
+            };
+
+            return (
               <div
+                className="piece"
+                key={piece.id}
                 style={{
                   position: 'absolute',
                   width: cellWidth,
                   height: cellHeight,
-                  left: 0,
-                  top: 0,
-                  backgroundImage: `url(${IMAGE_URL})`,
-                  backgroundSize: `${containerWidth}px ${containerHeight}px`,
-                  backgroundPosition: `-${piece.correctPos.x}px -${piece.correctPos.y}px`,
-                  zIndex: 1,
-                  transform: `scale(${
-                    (containerWidth - config.border * 10) / containerWidth
-                  }) ${
-                    piece.type === 'A'
-                      ? `translate(-${config.border}px, -${config.border}px)`
-                      : `translate(${config.border}px, ${config.border}px)`
-                  }`,
-                  clipPath:
-                    piece.type === 'A'
-                      ? 'polygon(0 0, 100% 0, 0 100%)'
-                      : 'polygon(100% 100%, 100% 0, 0 100%)',
+                  left: piece.currentPos.x,
+                  top: piece.currentPos.y,
+                  clipPath: clipPaths[piece.type],
+                  touchAction: 'none',
+                  cursor: 'grab',
+                  zIndex: piece.snapped ? 0 : piece.dragOffset ? 100 : 1,
                 }}
-              ></div>
-            </div>
-          ))}
+                onMouseDown={(e) => handleDragStart(e, piece.id)}
+                onTouchStart={(e) => handleDragStart(e, piece.id)}
+                onMouseMove={(e) => handleDragMove(e, piece.id)}
+                onTouchMove={(e) => handleDragMove(e, piece.id)}
+                onMouseUp={(e) => handleDragEnd(e, piece.id)}
+                onTouchEnd={(e) => handleDragEnd(e, piece.id)}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: cellWidth,
+                    height: cellHeight,
+                    left: 0,
+                    top: 0,
+                    background: 'black',
+                    clipPath: 'inherit',
+                    zIndex: -1,
+                  }}
+                ></div>
+
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: cellWidth,
+                    height: cellHeight,
+                    left: 0,
+                    top: 0,
+                    backgroundImage: `url(${IMAGE_URL})`,
+                    backgroundSize: `${containerWidth}px ${containerHeight}px`,
+                    backgroundPosition: `-${piece.correctPos.x}px -${piece.correctPos.y}px`,
+                    zIndex: 1,
+                    transform: `scale(${
+                      (containerWidth - config.border * 10) / containerWidth
+                    }) ${transforms[piece.type]}`,
+                    clipPath: clipPaths[piece.type],
+                  }}
+                ></div>
+              </div>
+            );
+          })}
           <div
             style={{
               position: 'fixed',
@@ -293,7 +356,7 @@ function App() {
               margin: '0 auto',
               backgroundImage: `url(${IMAGE_URL})`,
               backgroundSize: 'cover',
-              border: '2px solid green',
+              // border: '2px solid green',
             }}
           />
           <p>Gratulujeme, úspěšně jste složil obrázek!</p>
