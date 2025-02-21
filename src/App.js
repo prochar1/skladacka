@@ -14,66 +14,54 @@ const snapTolerance = 50; // tolerance v pixelech pro přichycování dílků
 function generatePieces() {
   const pieces = [];
   let id = 0;
-  const offsetX = (window.innerWidth - containerWidth) / 2;
-  const offsetY = (window.innerHeight - containerHeight) / 2;
-  const scatterMinX = -offsetX;
-  const scatterMinY = -offsetY;
-  const scatterMaxX = containerWidth + offsetX - cellWidth;
-  const scatterMaxY = containerHeight + offsetY - cellHeight;
+  // Výpočet okrajů pro rozmístění dílků (použijeme při disassemblingu)
+  // const offsetX = (window.innerWidth - containerWidth) / 2;
+  // const offsetY = (window.innerHeight - containerHeight) / 2;
+  // const scatterMinX = -offsetX;
+  // const scatterMinY = -offsetY;
+  // const scatterMaxX = containerWidth + offsetX - cellWidth;
+  // const scatterMaxY = containerHeight + offsetY - cellHeight;
 
   for (let row = 0; row < config.piecesCols; row++) {
     for (let col = 0; col < config.piecesCols; col++) {
       const correctPos = { x: col * cellWidth, y: row * cellHeight };
-      // Pro každý čtverec vytvoříme jen 2 dílky – záleží na pozici buňky, jaký typ použijeme.
+      // V tomto příkladu vytváříme 2 dílky na čtverec
       if ((row + col) % 2 === 0) {
-        // Původní dělení: přepona zprava doleva zezhora dolů
         pieces.push({
           id: id++,
           cell: { row, col },
-          type: 'A', // trojúhelník s přeponou zprava doleva
+          type: 'A',
           correctPos: { ...correctPos },
-          currentPos: {
-            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
-            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
-          },
+          // Počáteční currentPos = správná pozice (sestavení obrázku)
+          currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
         });
         pieces.push({
           id: id++,
           cell: { row, col },
-          type: 'B', // doplněk k typu A
+          type: 'B',
           correctPos: { ...correctPos },
-          currentPos: {
-            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
-            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
-          },
+          currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
         });
       } else {
-        // Alternativní dělení: šikmá strana zleva doprava zezhora dolů
         pieces.push({
           id: id++,
           cell: { row, col },
-          type: 'C', // jeden trojúhelník alternativního řezu (např. horní pravý)
+          type: 'C',
           correctPos: { ...correctPos },
-          currentPos: {
-            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
-            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
-          },
+          currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
         });
         pieces.push({
           id: id++,
           cell: { row, col },
-          type: 'D', // doplněk k typu C – dolní levý
+          type: 'D',
           correctPos: { ...correctPos },
-          currentPos: {
-            x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
-            y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
-          },
+          currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
         });
@@ -93,10 +81,36 @@ function App() {
   useEffect(() => {
     if (gamePhase === 'showImage') {
       const timeout = setTimeout(() => {
+        // Inicializujeme dílky sestavené podle correctPos
         setPieces(generatePieces());
+        // Přepneme hru do fáze "playing"
         setGamePhase('playing');
-      }, 500);
+      }, 2000);
       return () => clearTimeout(timeout);
+    }
+  }, [gamePhase]);
+
+  // Po přechodu do fáze "playing" rozpustíme obrázek animací – nastavíme currentPos na náhodná místa.
+  useEffect(() => {
+    if (gamePhase === 'playing') {
+      const offsetX = (window.innerWidth - containerWidth) / 2;
+      const offsetY = (window.innerHeight - containerHeight) / 2;
+      const scatterMinX = -offsetX;
+      const scatterMinY = -offsetY;
+      const scatterMaxX = containerWidth + offsetX - cellWidth;
+      const scatterMaxY = containerHeight + offsetY - cellHeight;
+      // Po 500ms spustíme animaci rozpadu
+      setTimeout(() => {
+        setPieces((prev) =>
+          prev.map((p) => ({
+            ...p,
+            currentPos: {
+              x: Math.random() * (scatterMaxX - scatterMinX) + scatterMinX,
+              y: Math.random() * (scatterMaxY - scatterMinY) + scatterMinY,
+            },
+          }))
+        );
+      }, 500);
     }
   }, [gamePhase]);
 
@@ -194,18 +208,20 @@ function App() {
           const dx = p.currentPos.x - p.correctPos.x;
           const dy = p.currentPos.y - p.correctPos.y;
           if (Math.sqrt(dx * dx + dy * dy) < snapTolerance) {
+            // Pokud je v toleranci, snapnutí proběhne okamžitě (bez animace)
             return {
               ...p,
               currentPos: { ...p.correctPos },
               snapped: true,
               dragOffset: null,
               error: false,
+              instantSnap: true, // flag pro okamžité snapnutí bez animace
             };
           } else {
             return {
               ...p,
               dragOffset: null,
-              error: true, // nastavení chybového stavu
+              error: true,
             };
           }
         }
@@ -213,12 +229,19 @@ function App() {
       })
     );
 
-    // Po jedné sekundě vymažeme error flag, aby se okraj vrátil na černou
+    // Vymažeme error flag po 1 sekundě
     setTimeout(() => {
       setPieces((prev) =>
         prev.map((p) => (p.id === id ? { ...p, error: false } : p))
       );
     }, 1000);
+
+    // Po krátké prodlevě resetujeme flag instantSnap (např. 50ms), aby další pohyby již měly animaci
+    setTimeout(() => {
+      setPieces((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, instantSnap: false } : p))
+      );
+    }, 50);
   };
 
   const restartGame = () => {
@@ -303,6 +326,10 @@ function App() {
                   clipPath: clipPaths[piece.type],
                   touchAction: 'none',
                   cursor: 'grab',
+                  transition:
+                    piece.dragOffset || piece.instantSnap
+                      ? 'none'
+                      : 'left 1s ease, top 1s ease',
                   zIndex: piece.snapped ? 0 : piece.dragOffset ? 100 : 1,
                 }}
                 onMouseDown={(e) => handleDragStart(e, piece.id)}
@@ -367,7 +394,6 @@ function App() {
               margin: '0 auto',
               backgroundImage: `url(${IMAGE_URL})`,
               backgroundSize: 'cover',
-              // border: '2px solid green',
             }}
           />
           <p>Gratulujeme, úspěšně jste složil obrázek!</p>
