@@ -270,6 +270,7 @@ function App() {
 
       {gamePhase === 'playing' && (
         <div
+          id="image"
           style={{
             position: 'relative',
             width: containerWidth,
@@ -333,6 +334,7 @@ function App() {
                 onTouchEnd={(e) => handleDragEnd(e, piece.id)}
               >
                 <div
+                  className={piece.snapped ? 'ok' : piece.error ? 'bad' : ''}
                   style={{
                     position: 'absolute',
                     width: cellWidth,
