@@ -70,6 +70,10 @@ function App() {
   const [timer, setTimer] = useState(TOTAL_TIME);
   const timerRef = useRef(null);
   const firstMove = useRef(false);
+  // Stav pro ID aktuálně taženého dílku
+  const [activePieceId, setActivePieceId] = useState(null);
+  // Stav pro sledování maximálního z-indexu
+  const [maxZIndex, setMaxZIndex] = useState(1);
 
   useEffect(() => {
     if (gamePhase === 'showImage') {
@@ -169,10 +173,15 @@ function App() {
                 x: clientX - (offsetX + p.currentPos.x),
                 y: clientY - (offsetY + p.currentPos.y),
               },
+              zIndex: maxZIndex, // Přiřadíme maximální z-index
             }
           : p
       )
     );
+    // Nastavíme ID aktivního dílku
+    setActivePieceId(id);
+    // Zvýšíme maximální z-index
+    setMaxZIndex((prev) => prev + 1);
   };
 
   // Aktualizujeme pozici dílku při tažení.
@@ -219,14 +228,13 @@ function App() {
               currentPos: { ...p.correctPos },
               snapped: true,
               dragOffset: null,
-              error: false,
               instantSnap: true, // flag pro okamžité snapnutí bez animace
+              zIndex: 0, // Vrátíme z-index na 0
             };
           } else {
             return {
               ...p,
               dragOffset: null,
-              error: true,
               instantSnap: true,
             };
           }
@@ -235,19 +243,15 @@ function App() {
       })
     );
 
-    // Vymažeme error flag po 1 sekundě
-    setTimeout(() => {
-      setPieces((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, error: false } : p))
-      );
-    }, 1000);
-
     // Po krátké prodlevě resetujeme flag instantSnap (např. 50ms), aby další pohyby již měly animaci
     setTimeout(() => {
       setPieces((prev) =>
         prev.map((p) => (p.id === id ? { ...p, instantSnap: false } : p))
       );
     }, 50);
+
+    // Resetujeme ID aktivního dílku
+    setActivePieceId(null);
   };
 
   const restartGame = () => {
@@ -257,6 +261,8 @@ function App() {
     clearInterval(timerRef.current);
     timerRef.current = null;
     setPieces([]);
+    setActivePieceId(null); // Resetujeme ID aktivního dílku
+    setMaxZIndex(1); // Resetujeme maximální z-index
   };
 
   return (
@@ -337,7 +343,7 @@ function App() {
                     piece.dragOffset || piece.instantSnap
                       ? 'none'
                       : 'left 1s ease, top 1s ease',
-                  zIndex: piece.snapped ? 0 : piece.dragOffset ? 100 : 1,
+                  zIndex: piece.snapped ? 0 : piece.zIndex || 1,
                 }}
                 onMouseDown={(e) => handleDragStart(e, piece.id)}
                 onTouchStart={(e) => handleDragStart(e, piece.id)}
@@ -347,18 +353,14 @@ function App() {
                 onTouchEnd={(e) => handleDragEnd(e, piece.id)}
               >
                 <div
-                  className={piece.snapped ? 'ok' : piece.error ? 'bad' : ''}
+                  className={piece.snapped ? 'ok' : ''}
                   style={{
                     position: 'absolute',
                     width: cellWidth,
                     height: cellHeight,
                     left: 0,
                     top: 0,
-                    background: piece.snapped
-                      ? 'green'
-                      : piece.error
-                      ? 'red'
-                      : 'black', // pokud není správně umístěn a není error => černá
+                    background: piece.snapped ? 'green' : 'black',
                     clipPath: 'inherit',
                     zIndex: -1,
                   }}
