@@ -29,6 +29,7 @@ function generatePieces() {
           currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
+          zIndex: 1, // Nastavíme výchozí z-index na 1
         });
         pieces.push({
           id: id++,
@@ -38,6 +39,7 @@ function generatePieces() {
           currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
+          zIndex: 1, // Nastavíme výchozí z-index na 1
         });
       } else {
         pieces.push({
@@ -48,6 +50,7 @@ function generatePieces() {
           currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
+          zIndex: 1, // Nastavíme výchozí z-index na 1
         });
         pieces.push({
           id: id++,
@@ -57,6 +60,7 @@ function generatePieces() {
           currentPos: { ...correctPos },
           snapped: false,
           dragOffset: null,
+          zIndex: 1, // Nastavíme výchozí z-index na 1
         });
       }
     }
@@ -71,9 +75,10 @@ function App() {
   const timerRef = useRef(null);
   const firstMove = useRef(false);
   // Stav pro ID aktuálně taženého dílku
+  // eslint-disable-next-line no-unused-vars
   const [activePieceId, setActivePieceId] = useState(null);
   // Stav pro sledování maximálního z-indexu
-  const [maxZIndex, setMaxZIndex] = useState(1);
+  const [maxZIndex, setMaxZIndex] = useState(2); // Začneme od 2, protože výchozí z-index je 1
 
   useEffect(() => {
     if (gamePhase === 'showImage') {
@@ -262,7 +267,7 @@ function App() {
     timerRef.current = null;
     setPieces([]);
     setActivePieceId(null); // Resetujeme ID aktivního dílku
-    setMaxZIndex(1); // Resetujeme maximální z-index
+    setMaxZIndex(2); // Resetujeme maximální z-index na 2
   };
 
   return (
