@@ -10,6 +10,9 @@ const cellWidth = containerWidth / config.piecesCols; // 200
 const cellHeight = containerHeight / config.piecesCols; // 200
 const snapTolerance = 50; // tolerance v pixelech pro přichycování dílků
 
+const CIRCLE_RADIUS = 45;
+const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
+
 // Vygeneruje dílky s náhodnou pozicí
 function generatePieces() {
   const pieces = [];
@@ -358,7 +361,7 @@ function App() {
                 onTouchEnd={(e) => handleDragEnd(e, piece.id)}
               >
                 <div
-                  className={piece.snapped ? 'ok' : ''}
+                  className={piece.snapped ? 'green' : 'black'}
                   style={{
                     position: 'absolute',
                     width: cellWidth,
@@ -388,14 +391,40 @@ function App() {
               </div>
             );
           })}
-          <div
-            style={{
-              position: 'fixed',
-              top: 10,
-              right: 10,
-            }}
-          >
-            Čas: {timer}s
+          <div className="timer-container">
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r={CIRCLE_RADIUS}
+                fill="none"
+                stroke="#e0e0e0"
+                strokeWidth="8"
+                className="timer-circle-background"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r={CIRCLE_RADIUS}
+                fill="none"
+                stroke="#3f51b5"
+                strokeWidth="8"
+                strokeDasharray={CIRCUMFERENCE}
+                strokeDashoffset={CIRCUMFERENCE * (timer / TOTAL_TIME)}
+                transform="rotate(-90 50 50)"
+                className="timer-circle"
+              />
+              <text
+                x="50"
+                y="55"
+                textAnchor="middle"
+                fontSize="18"
+                fill="#000"
+                className="timer-text"
+              >
+                {timer}s
+              </text>
+            </svg>
           </div>
         </div>
       )}
